@@ -266,25 +266,53 @@ async function startBot() {
     console.log(`[bot] SESSION_ID detected, payload length: ${afterPrefix.length} chars`);
 
     let credsJson;
-    let fullSession = cleanSid;
 
-    // CASE 1: Long payload → it's the full session (gzipped + base64)
-    // Decode directly from the env var, no fetch needed.
+    // The payload can be one of several formats:
+    //   1. Plain base64 of creds.json (most common — PairSite format)
+    //      Example: "eyJub2lzZUtleSI6..."
+    //   2. Base64 of gzipped creds.json (KLAUS-XMD format)
+    //      Example: "H4sIAAAAAAAAA..."
+    //   3. Short 20-char code → fetch from pair site (our own pair server format)
+    //
+    // We try them in order: plain base64 → gzipped base64 → short code fetch.
+
+    // CASE 1 & 2: Long payload → decode directly
     if (afterPrefix.length > 50) {
-        console.log('[bot] Long payload detected — decoding session directly from SESSION_ID');
+        console.log('[bot] Long payload detected — decoding session from SESSION_ID');
+
+        // Try plain base64 first (PairSite format)
         try {
-            const gzipped = Buffer.from(afterPrefix, 'base64');
-            credsJson = zlib.gunzipSync(gzipped).toString('utf8');
-            JSON.parse(credsJson); // validate
-            console.log(`[bot] ✓ Decoded creds.json (${credsJson.length} chars)`);
-        } catch (err) {
-            console.error('[bot] Failed to decode SESSION_ID directly:', err.message);
-            console.error('[bot] SESSION_ID may be corrupted or in an unexpected format.');
-            console.error('[bot] First 50 chars of payload:', afterPrefix.slice(0, 50));
-            return;
+            const decoded = Buffer.from(afterPrefix, 'base64');
+            const text = decoded.toString('utf8');
+            // Check if it's valid JSON
+            const parsed = JSON.parse(text);
+            if (parsed && (parsed.noiseKey || parsed.me || parsed.registered !== undefined)) {
+                credsJson = text;
+                console.log(`[bot] ✓ Decoded as plain base64 JSON (PairSite format, ${credsJson.length} chars)`);
+                if (parsed.me) {
+                    console.log(`[bot]   Pairing was for: ${parsed.me.id}`);
+                }
+            } else {
+                throw new Error('JSON missing expected Baileys keys');
+            }
+        } catch (plainErr) {
+            // Try gzipped base64 next (KLAUS-XMD format)
+            console.log('[bot] Plain base64 JSON failed, trying gzipped base64...');
+            try {
+                const gzipped = Buffer.from(afterPrefix, 'base64');
+                credsJson = zlib.gunzipSync(gzipped).toString('utf8');
+                JSON.parse(credsJson); // validate
+                console.log(`[bot] ✓ Decoded as gzipped base64 (KLAUS-XMD format, ${credsJson.length} chars)`);
+            } catch (gzErr) {
+                console.error('[bot] ✗ Both base64 and gzip decode failed.');
+                console.error('[bot]   Plain base64 error:', plainErr.message);
+                console.error('[bot]   Gzip error:', gzErr.message);
+                console.error('[bot] First 80 chars of payload:', afterPrefix.slice(0, 80));
+                return;
+            }
         }
     }
-    // CASE 2: Short payload (20 chars) → it's a short code, fetch from pair site
+    // CASE 3: Short payload (20 chars) → it's a short code, fetch from pair site
     else if (afterPrefix.length === CODE_LENGTH) {
         console.log(`[bot] Short code detected (${afterPrefix}) — fetching from pair site...`);
 
@@ -301,7 +329,7 @@ async function startBot() {
         for (const url of candidateUrls) {
             try {
                 console.log(`[bot] Trying: ${url}`);
-                const res = await fetch(url, { timeout: 8000 });
+                const res = await fetch(url);
                 if (!res.ok) {
                     console.log(`[bot]   → HTTP ${res.status}`);
                     continue;
@@ -317,23 +345,29 @@ async function startBot() {
                     const m = text.match(/^NIKOLA\s*MD\s*[:.]?\s*(.+)$/i);
                     if (!m) continue;
                     const payload = m[1].trim();
-                    const gzipped = Buffer.from(payload, 'base64');
-                    credsJson = zlib.gunzipSync(gzipped).toString('utf8');
-                    JSON.parse(credsJson);
+                    // Try plain base64 first
+                    try {
+                        credsJson = Buffer.from(payload, 'base64').toString('utf8');
+                        JSON.parse(credsJson);
+                    } catch {
+                        // Try gzipped
+                        const gzipped = Buffer.from(payload, 'base64');
+                        credsJson = zlib.gunzipSync(gzipped).toString('utf8');
+                        JSON.parse(credsJson);
+                    }
                     console.log(`[bot] ✓ Fetched + decoded session from ${url}`);
                     fetched = true;
                     break;
                 }
-                // Maybe the response is just the raw gzipped base64
+                // Maybe the response is just the raw base64
                 try {
-                    const gzipped = Buffer.from(text, 'base64');
-                    credsJson = zlib.gunzipSync(gzipped).toString('utf8');
+                    credsJson = Buffer.from(text, 'base64').toString('utf8');
                     JSON.parse(credsJson);
                     console.log(`[bot] ✓ Fetched + decoded session from ${url}`);
                     fetched = true;
                     break;
                 } catch {
-                    // not base64 gzipped, skip
+                    // not base64, skip
                 }
             } catch (e) {
                 console.log(`[bot]   → error: ${e.message}`);
