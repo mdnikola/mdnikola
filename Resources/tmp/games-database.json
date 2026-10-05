@@ -1,0 +1,44 @@
+{
+  "254796180105@s.whatsapp.net": {
+    "tictactoe2": {
+      "player1": "254762807972@s.whatsapp.net",
+      "player2": "264141075931215@lid",
+      "board": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "currentTurn": "254762807972@s.whatsapp.net",
+      "symbol": {
+        "254762807972@s.whatsapp.net": "X",
+        "264141075931215@lid": "O"
+      }
+    }
+  },
+  "254762807972@s.whatsapp.net": {
+    "tictactoe": {
+      "playerJid": "254762807972@s.whatsapp.net",
+      "botJid": "254762807972:4@s.whatsapp.net",
+      "board": [
+        "O",
+        "X",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "currentTurn": "254762807972@s.whatsapp.net",
+      "playerSymbol": "X",
+      "botSymbol": "O"
+    }
+  }
+}
