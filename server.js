@@ -245,51 +245,111 @@ wss.on('connection', async (ws) => {
 // ─── Bot mode (when SESSION_ID is set) ────────────────────────────────
 async function startBot() {
     const sessionId = process.env.SESSION_ID;
-    if (!sessionId || !sessionId.startsWith(PREFIX)) {
-        console.log('[bot] No valid SESSION_ID env var — running in pair-only mode');
+    if (!sessionId) {
+        console.log('[bot] No SESSION_ID env var — running in pair-only mode');
         return;
     }
 
-    const shortCode = sessionId.slice(PREFIX.length).trim();
-    if (shortCode.length !== CODE_LENGTH) {
-        console.error(`[bot] SESSION_ID code must be ${CODE_LENGTH} chars (got ${shortCode.length})`);
+    // Normalize: strip any surrounding quotes/whitespace
+    const cleanSid = sessionId.trim().replace(/^["']|["']$/g, '');
+
+    // Find the prefix (case-insensitive, flexible on spacing/dots after colon)
+    // Accepts: "NIKOLA MD:<...>", "NIKOLA MD:.<...>", "NIKOLA MD: <...>"
+    const prefixMatch = cleanSid.match(/^NIKOLA\s*MD\s*[:.]?\s*(.+)$/i);
+    if (!prefixMatch) {
+        console.error(`[bot] SESSION_ID does not start with "NIKOLA MD:" — got: ${cleanSid.slice(0, 30)}...`);
+        console.error('[bot] Running in pair-only mode.');
         return;
     }
 
-    console.log(`[bot] Resolving session ${shortCode}...`);
+    const afterPrefix = prefixMatch[1].trim();
+    console.log(`[bot] SESSION_ID detected, payload length: ${afterPrefix.length} chars`);
 
-    // Determine self URL — default to localhost (same process) since the pair site
-    // and bot run in the same dyno. SELF_URL env var overrides this if needed.
-    const selfUrl = process.env.SELF_URL || `http://localhost:${PORT}`;
-    const fetchUrl = `${selfUrl}/session/${shortCode}`;
-
-    let fullSession;
-    try {
-        const res = await fetch(fetchUrl);
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-        }
-        fullSession = (await res.text()).trim();
-        console.log(`[bot] Fetched full session (${fullSession.length} chars)`);
-    } catch (err) {
-        console.error(`[bot] Failed to fetch session from ${fetchUrl}:`, err.message);
-        console.error(`[bot] Make sure SELF_URL env var points to your live pair site URL.`);
-        return;
-    }
-
-    // Decode: strip prefix, base64-decode, gunzip → creds.json
-    if (!fullSession.startsWith(PREFIX)) {
-        console.error('[bot] Fetched session does not start with', PREFIX);
-        return;
-    }
-    const b64 = fullSession.slice(PREFIX.length);
     let credsJson;
-    try {
-        const gzipped = Buffer.from(b64, 'base64');
-        credsJson = zlib.gunzipSync(gzipped).toString('utf8');
-        JSON.parse(credsJson); // validate
-    } catch (err) {
-        console.error('[bot] Failed to decode session:', err.message);
+    let fullSession = cleanSid;
+
+    // CASE 1: Long payload → it's the full session (gzipped + base64)
+    // Decode directly from the env var, no fetch needed.
+    if (afterPrefix.length > 50) {
+        console.log('[bot] Long payload detected — decoding session directly from SESSION_ID');
+        try {
+            const gzipped = Buffer.from(afterPrefix, 'base64');
+            credsJson = zlib.gunzipSync(gzipped).toString('utf8');
+            JSON.parse(credsJson); // validate
+            console.log(`[bot] ✓ Decoded creds.json (${credsJson.length} chars)`);
+        } catch (err) {
+            console.error('[bot] Failed to decode SESSION_ID directly:', err.message);
+            console.error('[bot] SESSION_ID may be corrupted or in an unexpected format.');
+            console.error('[bot] First 50 chars of payload:', afterPrefix.slice(0, 50));
+            return;
+        }
+    }
+    // CASE 2: Short payload (20 chars) → it's a short code, fetch from pair site
+    else if (afterPrefix.length === CODE_LENGTH) {
+        console.log(`[bot] Short code detected (${afterPrefix}) — fetching from pair site...`);
+
+        // Try PairSite first (where the user actually paired)
+        const candidateUrls = [
+            `https://nikolamd.pairsite.space/session/${afterPrefix}`,
+            `https://nikolamd.pairsite.space/api/session/${afterPrefix}`,
+        ];
+        if (process.env.SELF_URL) {
+            candidateUrls.unshift(`${process.env.SELF_URL}/session/${afterPrefix}`);
+        }
+
+        let fetched = false;
+        for (const url of candidateUrls) {
+            try {
+                console.log(`[bot] Trying: ${url}`);
+                const res = await fetch(url, { timeout: 8000 });
+                if (!res.ok) {
+                    console.log(`[bot]   → HTTP ${res.status}`);
+                    continue;
+                }
+                const text = (await res.text()).trim();
+                // If response looks like HTML (PairSite SPA), skip
+                if (text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
+                    console.log(`[bot]   → got HTML (not a session endpoint)`);
+                    continue;
+                }
+                if (text.startsWith('NIKOLA MD:') || text.startsWith('NIKOLA MD:.')) {
+                    // Extract payload after prefix
+                    const m = text.match(/^NIKOLA\s*MD\s*[:.]?\s*(.+)$/i);
+                    if (!m) continue;
+                    const payload = m[1].trim();
+                    const gzipped = Buffer.from(payload, 'base64');
+                    credsJson = zlib.gunzipSync(gzipped).toString('utf8');
+                    JSON.parse(credsJson);
+                    console.log(`[bot] ✓ Fetched + decoded session from ${url}`);
+                    fetched = true;
+                    break;
+                }
+                // Maybe the response is just the raw gzipped base64
+                try {
+                    const gzipped = Buffer.from(text, 'base64');
+                    credsJson = zlib.gunzipSync(gzipped).toString('utf8');
+                    JSON.parse(credsJson);
+                    console.log(`[bot] ✓ Fetched + decoded session from ${url}`);
+                    fetched = true;
+                    break;
+                } catch {
+                    // not base64 gzipped, skip
+                }
+            } catch (e) {
+                console.log(`[bot]   → error: ${e.message}`);
+            }
+        }
+
+        if (!fetched) {
+            console.error('[bot] ✗ Could not fetch session from any known endpoint.');
+            console.error('[bot] If you paired on PairSite, the session may only be stored in memory briefly.');
+            console.error('[bot] Re-pair and deploy quickly, or paste the FULL session ID (long one) into SESSION_ID.');
+            return;
+        }
+    } else {
+        console.error(`[bot] Unexpected SESSION_ID payload length: ${afterPrefix.length}`);
+        console.error(`[bot] Expected either ${CODE_LENGTH} chars (short code) or >50 chars (full session).`);
+        console.error('[bot] First 50 chars:', afterPrefix.slice(0, 50));
         return;
     }
 
