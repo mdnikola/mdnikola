@@ -1,114 +1,85 @@
-<h1 align="center">⚡ NIKOLA MD</h1>
+# NIKOLA Pair Site
 
-<p align="center">
-  <em>Lightweight • Multi-Session • WhatsApp Bot</em>
-</p>
+A clean, standalone WhatsApp pairing site. Visitors enter their phone number + master password, get an 8-character pairing code, and link their WhatsApp to a bot instance running on your server.
 
-<p align="center">
-  <a href="https://github.com/Dark-Xploit/CypherX-Ultra/fork">
-    <img src="https://img.shields.io/badge/Fork%20Repo-darkblue?style=for-the-badge&logo=github&logoColor=white"/>
-  </a>
-  <a href="https://github.com/Dark-Xploit">
-    <img src="https://img.shields.io/badge/NIKOLA MD-darkgreen?style=for-the-badge&logo=whatsapp&logoColor=white"/>
-  </a>
-  <a href="https://github.com/Dark-Xploit/CypherX-Ultra/stargazers">
-    <img src="https://img.shields.io/github/stars/Dark-Xploit/CypherX-Ultra?style=for-the-badge&color=yellow"/>
-  </a>
-</p>
+## How it works
 
----
+1. Visitor opens your site (e.g. `https://your-app.herokuapp.com`)
+2. They enter their phone number (with country code) and the master password
+3. The site displays an 8-character pairing code
+4. They open WhatsApp → Settings → Linked Devices → Link with phone number → enter the code
+5. The site shows "Pairing successful" — the bot is now online for their number
+6. The bot stays alive and responds to `.ping` and `.menu`
 
-## 📺 Panel(Katabump) Deployment Tutorial
+## What's inside
 
-> **Watch this before asking questions, everything is covered step by step.**
-
-<p align="center">
-  <a href="https://youtu.be/5GRexCxQDIs?si=jNIk5vFk42gMpi0i" target="_blank">
-    <img src="https://img.youtube.com/vi/5GRexCxQDIs/maxresdefault.jpg" alt="NIKOLA MD Deployment Tutorial" width="700"/>
-  </a>
-</p>
-<p align="center"><a href="https://youtu.be/5GRexCxQDIs?si=jNIk5vFk42gMpi0i">▶️ Click to watch on YouTube</a></p>
-
----
-
-##  Deploy to Heroku
-
-### Step 1: Fork the Repository
-
-<p align="center">
-  <a href="https://github.com/Dark-Xploit/CypherX-Ultra/fork">
-    <img src="https://img.shields.io/badge/1.%20Fork%20Repo-100000?style=for-the-badge&logo=github&logoColor=white&labelColor=darkblue&color=darkblue"/>
-  </a>
-</p>
-
-> ⚠️ You **must** fork this repository. The bot verifies your GitHub username against the fork on startup.
-
----
-
-
-### Step 2: Deploy
-
-Click the button below and fill in the config vars when prompted, make sure you have a functional heroku account:
-
-<p align="center">
-  <a href="https://heroku.com/deploy?template=https://github.com/Dark-Xploit/CypherX-Ultra">
-    <img src="https://www.herokucdn.com/deploy/button.svg" alt="Deploy to Heroku" width="200"/>
-  </a>
-</p>
-
----
-
-##  Configuration (Environment Variables)
-
-| Variable | Description | Required |
-|---|---|---|
-| `MASTER_PASSWORD` | Web dashboard password, needed to pair sessions and access settings | ✅ Yes |
-| `GITHUB_USERNAME` | Your GitHub username (must have forked this repo) | ✅ Yes |
-| `DATABASE_URL` | PostgreSQL connection string, auto-set by Heroku Postgres add-on | ✅ Yes |
-| `PORT` | Web server port, auto-set by Heroku, don't change unless running on panel | ❌ No |
-
-> 💡 On Heroku, set these under **Settings → Config Vars**.  
-> For local development, edit `.env` or use `settings.js` and fill in the values.
-
----
-
-##  Local Setup
-
-```bash
-# 1. Clone your fork
-git clone https://github.com/<YOUR_USERNAME>/CypherX-Ultra
-cd CypherX-Ultra
-
-# 2. Install dependencies
-npm install
-
-# 3. Configure environment
-nano settings.js
-# Edit settings.js with your values
-
-# 4. Start the bot
-npm start
+```
+pair-site/
+├── server.js          # Express + Baileys pairing logic
+├── package.json
+├── Procfile           # Heroku
+├── app.json           # Heroku one-click deploy
+├── .env.example
+├── .gitignore
+├── public/
+│   ├── index.html     # Pair UI
+│   ├── styles.css     # Modern dark UI
+│   └── script.js      # Pairing flow + status polling
+└── sessions/          # Baileys session storage (gitignored)
 ```
 
-Then open `http://localhost:3000` in your browser to access the web dashboard.
+## Deploy
 
----
+### Heroku (one-click)
+1. Push this folder to a GitHub repo
+2. Open: `https://heroku.com/deploy?template=https://github.com/<your-user>/<your-repo>`
+3. Set `MASTER_PASSWORD` to something only you know
+4. Deploy → open app → your pair site is live
 
-## ✨ Features
+### Render
+1. New → Web Service → connect your GitHub repo
+2. Build command: `npm install`
+3. Start command: `npm start`
+4. Add env var `MASTER_PASSWORD=your-secret`
+5. Deploy
 
-- 🔁 **Multi-session**: run multiple WhatsApp accounts simultaneously
-- 🔄 **Auto-update**: pulls latest changes from GitHub automatically
-- 🌐 **Web dashboard**: pair sessions, manage settings and play games via browser
-- 🧩 **Plugin system**: easily extend with custom commands
-- 🛡️ **Anti-delete / Anti-edit**: catch deleted and edited messages
-- 📊 **Lightweight**: optimised for low-memory environments
+### Railway
+1. New project → deploy from GitHub repo
+2. Add env var `MASTER_PASSWORD=your-secret`
+3. Deploy
 
----
+### Local
+```bash
+npm install
+cp .env.example .env
+# Edit .env to set your master password
+npm start
+# Open http://localhost:3000
+```
 
-##  License
+## Environment variables
 
-This project is licensed for personal use. You may not redistribute or sell modified versions.  
-© [Dark-Xploit](https://github.com/Dark-Xploit) - All rights reserved.
+| Variable           | Default              | Description                                    |
+|--------------------|----------------------|------------------------------------------------|
+| `MASTER_PASSWORD`  | `nikola-md-internal` | Password visitors must enter. **Change this.** |
+| `PORT`             | `3000`               | Auto-set by Heroku/Render/Railway.             |
 
----
-NIKOLA MD is a modified fork of CypherX-Ultra by Tylor (Dark-Xploit). Original license and credit apply.
+## Bot commands (after pairing)
+
+| Command | Response                                |
+|---------|-----------------------------------------|
+| `.ping` | `🏓 Pong! Bot is alive.`                |
+| `.menu` | Shows available commands                |
+
+Add your own commands by editing the `messages.upsert` handler in `server.js`.
+
+## Security notes
+
+- **Change `MASTER_PASSWORD`** before deploying — otherwise anyone can pair a WhatsApp number to your server.
+- Sessions are stored in `sessions/<phone>/` on the server. On Heroku free tier, these are wiped on restart — pair numbers will need to re-pair after dyno restart. For persistent sessions, upgrade to a paid dyno or use an external storage backend.
+- WhatsApp may ban numbers that send too many messages too fast. Be careful with broadcast/spam commands.
+- This is a minimal proof-of-concept. For a full-featured bot, use the complete NIKOLA MD bot instead.
+
+## License
+
+MIT — do whatever you want with this.

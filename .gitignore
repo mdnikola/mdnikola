@@ -1,11 +1,9 @@
 # Dependencies
 node_modules/
 
-# Sessions & temp (never commit these)
-Resources/Sessions/*
-Resources/Temp/*
-!Resources/Sessions/.gitkeep
-!Resources/Temp/.gitkeep
+# Session storage (per-phone WhatsApp credentials — NEVER commit)
+sessions/
+!sessions/.gitkeep
 
 # Logs
 *.log

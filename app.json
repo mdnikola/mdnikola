@@ -1,37 +1,19 @@
 {
-  "name": "NIKOLA MD",
-  "description": "NIKOLA MD; your powerful WhatsApp multi-session bot!",
-  "logo": "https://files.catbox.moe/ia1mgm.jpg",
-  "keywords": ["whatsapp", "bot", "nikola-md"],
+  "name": "NIKOLA Pair Site",
+  "description": "Standalone WhatsApp pairing site. Visitors enter phone + master password, get an 8-char pairing code, link their WhatsApp.",
   "repository": "https://github.com/mdnikola/mdnikola",
   "stack": "heroku-24",
-  "addons": [
-    {
-      "plan": "heroku-postgresql"
-    }
-  ],
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "env": {
     "MASTER_PASSWORD": {
-      "description": "Internal password — DO NOT CHANGE. The web UI uses this automatically; you never type it.",
+      "description": "Password visitors must enter to generate a pairing code. Change this to something only you know.",
       "value": "nikola-md-internal",
       "required": true
-    },
-    "GITHUB_USERNAME": {
-      "description": "Your GitHub username. You must have forked the CypherX-Ultra repository before using this bot.",
-      "value": "",
-      "required": true
-    },
-    "DATABASE_URL": {
-      "description": "PostgreSQL connection string. Automatically set by the Heroku Postgres add-on — do not change.",
-      "required": false
     }
   },
   "buildpacks": [
-    {
-      "url": "heroku/nodejs"
-    }
+    { "url": "heroku/nodejs" }
   ]
 }
