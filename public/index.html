@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0f0f23" />
-  <title>NIKOLA Pair — WhatsApp Bot Pairing</title>
+  <meta name="theme-color" content="#0a0a1a" />
+  <title>NIKOLA MD Pair — Get Session ID</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
@@ -14,92 +14,74 @@
   <div class="bg-ambient"></div>
 
   <main class="shell">
-
-    <!-- ─── HEADER ─────────────────────────────────────────────── -->
     <header class="brand">
       <div class="brand-logo">⚡</div>
-      <h1 class="brand-name">NIKOLA Pair</h1>
-      <p class="brand-sub">Link your WhatsApp in seconds</p>
+      <h1 class="brand-name">NIKOLA MD Pair</h1>
+      <p class="brand-sub">Get your <code>SESSION_ID</code> for Heroku / Render</p>
     </header>
 
-    <!-- ─── PAIR CARD ──────────────────────────────────────────── -->
-    <section id="pairCard" class="card">
+    <section class="card">
 
-      <!-- Step 1: form -->
-      <div id="formStep">
-        <h2 class="card-title">Pair a WhatsApp number</h2>
-        <p class="card-desc">Enter your phone number (with country code) and the master password to receive an 8-character pairing code.</p>
+      <!-- Step 1: QR code -->
+      <div id="qrStep">
+        <h2 class="card-title">Scan with WhatsApp</h2>
+        <p class="card-desc">Open WhatsApp on your phone → Settings → Linked Devices → Link a Device → scan the QR code below.</p>
 
-        <form id="pairForm" autocomplete="off">
-          <label class="field">
-            <span class="field-label">Phone number</span>
-            <input
-              type="tel"
-              id="phone"
-              placeholder="254712345678"
-              autocomplete="off"
-              required
-            />
-            <span class="field-hint">Include country code. No <code>+</code>, spaces, or dashes.</span>
-          </label>
+        <div class="qr-container">
+          <img id="qrImage" src="" alt="Loading QR..." class="qr-image hidden" />
+          <div id="qrLoader" class="qr-loader">
+            <div class="status-spinner"></div>
+            <p>Generating QR code…</p>
+          </div>
+        </div>
 
-          <label class="field">
-            <span class="field-label">Master password</span>
-            <input
-              type="password"
-              id="password"
-              placeholder="Enter master password"
-              required
-            />
-          </label>
+        <p class="qr-status" id="qrStatus">Waiting for QR…</p>
 
-          <button type="submit" id="submitBtn" class="btn-primary">
-            <span class="btn-text">Generate pairing code</span>
-            <span class="btn-spinner hidden"></span>
-          </button>
-
-          <div id="alertBox" class="alert hidden"></div>
-        </form>
+        <button id="refreshBtn" class="btn-ghost">Refresh QR</button>
       </div>
 
-      <!-- Step 2: pairing code -->
-      <div id="codeStep" class="hidden">
+      <!-- Step 2: Session ID -->
+      <div id="sessionStep" class="hidden">
         <div class="code-header">
-          <span class="code-badge">PAIRING CODE</span>
-          <span class="code-timer" id="codeTimer">expires in 60s</span>
-        </div>
-        <div id="pairCode" class="pair-code">--------</div>
-
-        <ol class="steps">
-          <li>Open <strong>WhatsApp</strong> on your phone</li>
-          <li>Go to <strong>Settings → Linked Devices</strong></li>
-          <li>Tap <strong>Link with phone number</strong></li>
-          <li>Enter the code above</li>
-        </ol>
-
-        <div id="statusBox" class="status-box">
-          <div class="status-spinner"></div>
-          <p class="status-text">Waiting for pairing to complete…</p>
+          <span class="code-badge">SESSION_ID</span>
+          <span class="code-timer" id="timer">expires in 30:00</span>
         </div>
 
-        <button id="resetBtn" class="btn-ghost">Start over</button>
+        <div id="sessionIdBox" class="session-id-box">--------</div>
+
+        <div class="btn-row">
+          <button id="copyBtn" class="btn-primary">
+            <span>📋 Copy</span>
+          </button>
+          <button id="pairAgainBtn" class="btn-ghost">Pair another</button>
+        </div>
+
+        <div class="instructions">
+          <h3>Next steps:</h3>
+          <ol>
+            <li>Click <strong>Copy</strong> above (or select the text manually)</li>
+            <li>Click <strong>Heroku Deploy</strong> or <strong>Render Deploy</strong> on the GitHub repo</li>
+            <li>Paste this <code>SESSION_ID</code> into the config var field</li>
+            <li>Deploy — bot will come online within 60 seconds</li>
+          </ol>
+        </div>
+
+        <div id="alertBox" class="alert hidden"></div>
       </div>
 
-      <!-- Step 3: success -->
-      <div id="successStep" class="hidden">
-        <div class="success-emoji">✅</div>
-        <h2 class="card-title">Pairing successful!</h2>
-        <p class="card-desc">Your bot is now online. Send <code>.menu</code> to your WhatsApp number to see available commands.</p>
-        <button id="doneBtn" class="btn-primary">Pair another number</button>
+      <!-- Step 3: Error -->
+      <div id="errorStep" class="hidden">
+        <div class="error-emoji">⚠️</div>
+        <h2 class="card-title">Connection error</h2>
+        <p class="card-desc" id="errorMsg">Something went wrong.</p>
+        <button id="retryBtn" class="btn-primary">Try again</button>
       </div>
 
     </section>
 
-    <!-- ─── FOOTER ─────────────────────────────────────────────── -->
     <footer class="footer">
-      <p>NIKOLA Pair · Built on Baileys · <a href="https://github.com/mdnikola/mdnikola" target="_blank" rel="noopener">GitHub</a></p>
+      <p>NIKOLA MD · Built on Baileys · <a href="https://github.com/mdnikola/mdnikola" target="_blank" rel="noopener">GitHub</a></p>
     </footer>
-
   </main>
 
   <script src="/script.js"></script>

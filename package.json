@@ -1,8 +1,9 @@
 {
-  "name": "nikola-pair-site",
+  "name": "nikola-md-pair",
   "version": "1.0.0",
-  "description": "Standalone WhatsApp pairing site built on Baileys. Visitors enter their phone + master password, get an 8-char pairing code, and link their WhatsApp to a bot instance.",
+  "description": "NIKOLA MD pairing site — generates NIKOLA MD:<20-char-code> session IDs for the bot, and a bot entry point that reads SESSION_ID env var.",
   "main": "server.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
@@ -14,14 +15,18 @@
     "@hapi/boom": "^10.0.1",
     "@whiskeysockets/baileys": "^6.7.18",
     "express": "^4.19.2",
-    "pino": "^8.14.1"
+    "fs-extra": "^11.1.0",
+    "pino": "^8.14.1",
+    "qrcode": "^1.5.4",
+    "ws": "^8.16.0"
   },
   "keywords": [
     "whatsapp",
     "pair",
     "baileys",
-    "bot"
+    "nikola-md",
+    "session-id"
   ],
-  "author": "You",
+  "author": "NIKOLA",
   "license": "MIT"
 }

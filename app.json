@@ -1,16 +1,28 @@
 {
-  "name": "NIKOLA Pair Site",
-  "description": "Standalone WhatsApp pairing site. Visitors enter phone + master password, get an 8-char pairing code, link their WhatsApp.",
+  "name": "NIKOLA MD",
+  "description": "NIKOLA MD — WhatsApp bot with session-ID-based pairing. Generate SESSION_ID at the pair site, paste into Heroku/Render, bot comes online.",
+  "logo": "https://files.catbox.moe/ia1mgm.jpg",
+  "keywords": ["whatsapp", "bot", "nikola-md", "baileys", "session-id"],
   "repository": "https://github.com/mdnikola/mdnikola",
   "stack": "heroku-24",
   "scripts": {
     "start": "node server.js"
   },
   "env": {
-    "MASTER_PASSWORD": {
-      "description": "Password visitors must enter to generate a pairing code. Change this to something only you know.",
-      "value": "nikola-md-internal",
+    "SESSION_ID": {
+      "description": "Get this from https://nikolamd.pairsite.space — format: NIKOLA MD:<20-char-code> (30 chars total). Required for the bot to come online.",
+      "value": "",
       "required": true
+    },
+    "SELF_URL": {
+      "description": "Your app's public URL (e.g. https://your-app.herokuapp.com). The bot uses this to fetch its full session. Set to your Heroku app URL.",
+      "value": "",
+      "required": true
+    },
+    "MASTER_PASSWORD": {
+      "description": "Password for the pair site dashboard (not needed if you only run the bot). Default: nikola-md-internal.",
+      "value": "nikola-md-internal",
+      "required": false
     }
   },
   "buildpacks": [

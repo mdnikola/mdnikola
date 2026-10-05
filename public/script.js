@@ -1,162 +1,167 @@
-/* NIKOLA Pair Site — frontend logic */
+/* NIKOLA MD Pair — frontend logic */
 
 const $ = (id) => document.getElementById(id);
 
 const els = {
-  formStep:    $('formStep'),
-  codeStep:    $('codeStep'),
-  successStep: $('successStep'),
+  qrStep: $('qrStep'),
+  sessionStep: $('sessionStep'),
+  errorStep: $('errorStep'),
 
-  form:        $('pairForm'),
-  phone:       $('phone'),
-  password:    $('password'),
-  submitBtn:   $('submitBtn'),
-  btnText:     document.querySelector('.btn-text'),
-  btnSpinner:  document.querySelector('.btn-spinner'),
+  qrImage: $('qrImage'),
+  qrLoader: $('qrLoader'),
+  qrStatus: $('qrStatus'),
 
-  alertBox:    $('alertBox'),
-  pairCode:    $('pairCode'),
-  codeTimer:   $('codeTimer'),
-  statusBox:   $('statusBox'),
-  statusText:  document.querySelector('.status-text'),
+  sessionIdBox: $('sessionIdBox'),
+  timer: $('timer'),
+  copyBtn: $('copyBtn'),
+  pairAgainBtn: $('pairAgainBtn'),
 
-  resetBtn:    $('resetBtn'),
-  doneBtn:     $('doneBtn'),
+  errorMsg: $('errorMsg'),
+  retryBtn: $('retryBtn'),
+  refreshBtn: $('refreshBtn'),
+
+  alertBox: $('alertBox'),
 };
 
-let statusPoll = null;
-let timerInterval = null;
-let currentPhone = null;
+let ws = null;
+let countdownInterval = null;
+let currentSessionId = '';
 
-// ─── Helpers ──────────────────────────────────────────────────────────
-function show(el)  { el.classList.remove('hidden'); }
-function hide(el)  { el.classList.add('hidden'); }
+function show(el) { el.classList.remove('hidden'); }
+function hide(el) { el.classList.add('hidden'); }
+function showStep(step) {
+  hide(els.qrStep); hide(els.sessionStep); hide(els.errorStep);
+  if (step === 'qr') show(els.qrStep);
+  if (step === 'session') show(els.sessionStep);
+  if (step === 'error') show(els.errorStep);
+}
 
-function showAlert(type, msg) {
+function showAlert(msg, type = 'error') {
   els.alertBox.className = `alert alert-${type}`;
   els.alertBox.textContent = msg;
   show(els.alertBox);
 }
 function clearAlert() {
   els.alertBox.className = 'alert hidden';
-  els.alertBox.textContent = '';
 }
 
-function setLoading(loading) {
-  els.submitBtn.disabled = loading;
-  if (loading) {
-    hide(els.btnText);
-    show(els.btnSpinner);
-  } else {
-    show(els.btnText);
-    hide(els.btnSpinner);
-  }
-}
+function connect() {
+  showStep('qr');
+  hide(els.qrImage);
+  show(els.qrLoader);
+  els.qrStatus.textContent = 'Connecting…';
 
-function showStep(step) {
-  hide(els.formStep);
-  hide(els.codeStep);
-  hide(els.successStep);
-  if (step === 'form')    show(els.formStep);
-  if (step === 'code')    show(els.codeStep);
-  if (step === 'success') show(els.successStep);
-}
-
-// ─── Pair flow ────────────────────────────────────────────────────────
-els.form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  clearAlert();
-
-  const phone = els.phone.value.trim();
-  const password = els.password.value;
-
-  if (!phone)    return showAlert('error', 'Please enter your phone number.');
-  if (!password) return showAlert('error', 'Please enter the master password.');
-
-  setLoading(true);
+  // Use wss:// if served over https, ws:// otherwise
+  const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+  const wsUrl = `${protocol}://${location.host}/ws`;
 
   try {
-    const res = await fetch('/api/pair', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password }),
-    });
-    const data = await res.json();
+    ws = new WebSocket(wsUrl);
+  } catch (e) {
+    showAlert('WebSocket error: ' + e.message);
+    return;
+  }
 
-    if (!res.ok) {
-      setLoading(false);
-      return showAlert('error', data.error || 'Pairing failed.');
+  ws.onopen = () => {
+    els.qrStatus.textContent = 'Connected — waiting for QR code…';
+  };
+
+  ws.onmessage = (event) => {
+    let msg;
+    try { msg = JSON.parse(event.data); } catch { return; }
+
+    if (msg.type === 'qr') {
+      hide(els.qrLoader);
+      show(els.qrImage);
+      els.qrImage.src = msg.qr;
+      els.qrStatus.textContent = 'Scan with WhatsApp → Settings → Linked Devices → Link a Device';
+    } else if (msg.type === 'session_id') {
+      currentSessionId = msg.id;
+      els.sessionIdBox.textContent = msg.id;
+      showStep('session');
+      startCountdown(msg.expiresIn);
+    } else if (msg.type === 'closed') {
+      els.qrStatus.textContent = 'Connection closed — refreshing QR…';
+      setTimeout(() => location.reload(), 2000);
+    } else if (msg.type === 'error') {
+      els.errorMsg.textContent = msg.message;
+      showStep('error');
     }
+  };
 
-    if (data.alreadyPaired) {
-      setLoading(false);
-      currentPhone = phone.replace(/\D/g, '');
-      showStep('success');
-      return;
-    }
+  ws.onerror = () => {
+    els.errorMsg.textContent = 'WebSocket connection failed. Check your network and try again.';
+    showStep('error');
+  };
 
-    // Show pairing code
-    els.pairCode.textContent = data.pairingCode || '--------';
-    currentPhone = phone.replace(/\D/g, '');
-    setLoading(false);
-    showStep('code');
-
-    // Start countdown timer (60s)
-    let remaining = 60;
-    els.codeTimer.textContent = `expires in ${remaining}s`;
-    timerInterval = setInterval(() => {
-      remaining--;
-      if (remaining <= 0) {
-        clearInterval(timerInterval);
-        els.codeTimer.textContent = 'expired — start over';
-        els.codeTimer.style.color = 'var(--error)';
-        if (statusPoll) clearInterval(statusPoll);
-      } else {
-        els.codeTimer.textContent = `expires in ${remaining}s`;
+  ws.onclose = () => {
+    if (!currentSessionId && !els.errorStep.classList.contains('hidden') === false) {
+      // If not in session step and not in error step, show error
+      if (els.qrStep.classList.contains('hidden') === false && !currentSessionId) {
+        els.errorMsg.textContent = 'Connection closed. Click Try again.';
+        showStep('error');
       }
-    }, 1000);
+    }
+  };
+}
 
-    // Poll for pairing status every 3s
-    statusPoll = setInterval(pollStatus, 3000);
-  } catch (err) {
-    setLoading(false);
-    showAlert('error', 'Network error: ' + err.message);
+function startCountdown(durationMs) {
+  let remaining = Math.floor(durationMs / 1000);
+  els.timer.textContent = `expires in ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(countdownInterval);
+      els.timer.textContent = 'expired';
+      els.timer.style.color = 'var(--error)';
+      showAlert('Session ID expired. Click "Pair another" to generate a new one.', 'error');
+    } else {
+      const m = Math.floor(remaining / 60);
+      const s = String(remaining % 60).padStart(2, '0');
+      els.timer.textContent = `expires in ${m}:${s}`;
+    }
+  }, 1000);
+}
+
+els.copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(currentSessionId);
+    els.copyBtn.querySelector('span').textContent = '✓ Copied!';
+    setTimeout(() => {
+      els.copyBtn.querySelector('span').textContent = '📋 Copy';
+    }, 1500);
+  } catch (e) {
+    // Fallback: select the text
+    const range = document.createRange();
+    range.selectNode(els.sessionIdBox);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.execCommand('copy');
+    showAlert('Selected text — press Cmd/Ctrl+C to copy', 'info');
   }
 });
 
-async function pollStatus() {
-  if (!currentPhone) return;
-  try {
-    const res = await fetch(`/api/status/${currentPhone}`);
-    const data = await res.json();
-    if (data.paired) {
-      clearInterval(statusPoll);
-      clearInterval(timerInterval);
-      els.statusBox.classList.add('success');
-      els.statusText.textContent = 'Pairing successful! Your bot is online.';
-      setTimeout(() => showStep('success'), 1200);
-    }
-  } catch (e) { /* keep polling */ }
-}
-
-// ─── Reset / done ─────────────────────────────────────────────────────
-els.resetBtn.addEventListener('click', () => {
-  if (statusPoll) clearInterval(statusPoll);
-  if (timerInterval) clearInterval(timerInterval);
-  els.statusBox.classList.remove('success');
-  els.statusText.textContent = 'Waiting for pairing to complete…';
-  els.codeTimer.style.color = '';
-  els.password.value = '';
-  els.phone.value = '';
+els.pairAgainBtn.addEventListener('click', () => {
+  if (countdownInterval) clearInterval(countdownInterval);
+  currentSessionId = '';
+  if (ws) { try { ws.close(); } catch {} }
   clearAlert();
-  showStep('form');
+  els.timer.style.color = '';
+  connect();
 });
 
-els.doneBtn.addEventListener('click', () => {
-  els.statusBox.classList.remove('success');
-  els.statusText.textContent = 'Waiting for pairing to complete…';
-  els.codeTimer.style.color = '';
-  els.password.value = '';
-  els.phone.value = '';
-  showStep('form');
+els.retryBtn.addEventListener('click', () => {
+  if (ws) { try { ws.close(); } catch {} }
+  clearAlert();
+  connect();
 });
+
+els.refreshBtn.addEventListener('click', () => {
+  if (ws) { try { ws.close(); } catch {} }
+  clearAlert();
+  connect();
+});
+
+// Start on load
+connect();

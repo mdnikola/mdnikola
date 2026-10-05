@@ -3,10 +3,13 @@ node_modules/
 
 # Session storage (per-phone WhatsApp credentials — NEVER commit)
 sessions/
+tmp/
 !sessions/.gitkeep
 
 # Logs
 *.log
+dev.log
+server.log
 
 # Environment
 .env

@@ -36,4 +36,59 @@
 
 ---
 
+### How it works
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  1. PAIR SITE  (https://nikolamd.pairsite.space)         │
+│     • User opens site → WebSocket connects               │
+│     • Server creates Baileys session, emits QR           │
+│     • User scans QR with WhatsApp                        │
+│     • Server captures creds, gzips + base64-encodes      │
+│     • Server generates 20-char code, stores full session │
+│     • Server returns "NIKOLA MD:<20-char-code>" to user  │
+└──────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────┐
+│  2. DEPLOY  (Heroku / Render)                            │
+│     • User pastes SESSION_ID = "NIKOLA MD:<code>"        │
+│     • User sets SELF_URL = https://their-app.herokuapp.com│
+│     • App boots → reads SESSION_ID env var               │
+│     • Bot fetches full session via GET /session/<code>   │
+│     • Bot decompresses creds → writes creds.json         │
+│     • Bot connects to WhatsApp as the paired user        │
+│     • ✅ Bot online — responds to .ping and .menu        │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /` | Pair site UI (QR code + session ID display) |
+| `WS /ws` | WebSocket — receives QR updates, returns session ID |
+| `GET /session/:code` | Bot fetches full session string by 20-char code |
+| `GET /health` | Health check — returns status, active sessions, uptime |
+
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SESSION_ID` | Yes (bot mode) | `NIKOLA MD:<20-char-code>` from the pair site |
+| `SELF_URL` | Yes (bot mode) | Your app's public URL — used to fetch the full session |
+| `MASTER_PASSWORD` | No | Pair site password (default: `nikola-md-internal`) |
+| `PORT` | No | Auto-set by Heroku/Render (defaults to 3000) |
+
+### Bot commands
+
+| Command | Response |
+|---------|----------|
+| `.ping` | `🏓 Pong! NIKOLA MD is alive.` |
+| `.menu` | Shows available commands |
+
+Add your own commands by editing the `messages.upsert` handler in `server.js`.
+
+---
+
 <p align="center"><sub>Built by NIKOLA · MIT License</sub></p>
