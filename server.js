@@ -255,7 +255,8 @@ async function startBot() {
 
     console.log(`[bot] Resolving session ${shortCode}...`);
 
-    // Determine self URL — Heroku provides the app's URL via app.json env var, fallback to localhost
+    // Determine self URL — default to localhost (same process) since the pair site
+    // and bot run in the same dyno. SELF_URL env var overrides this if needed.
     const selfUrl = process.env.SELF_URL || `http://localhost:${PORT}`;
     const fetchUrl = `${selfUrl}/session/${shortCode}`;
 
@@ -370,7 +371,6 @@ async function startBot() {
         console.log('');
         if (process.env.SESSION_ID) {
             console.log(`🤖 Bot mode: ENABLED (SESSION_ID detected)`);
-            console.log(`🌐 SELF_URL:           ${process.env.SELF_URL || '(not set — bot will fail to fetch session!)'}`);
             console.log('');
             startBot().catch(err => console.error('[bot] startup error:', err));
         } else {

@@ -10,19 +10,9 @@
   },
   "env": {
     "SESSION_ID": {
-      "description": "Get this from https://nikolamd.pairsite.space — format: NIKOLA MD:<20-char-code> (30 chars total). Required for the bot to come online.",
+      "description": "Must start with NIKOLA MD",
       "value": "",
       "required": true
-    },
-    "SELF_URL": {
-      "description": "Your app's public URL (e.g. https://your-app.herokuapp.com). The bot uses this to fetch its full session. Set to your Heroku app URL.",
-      "value": "",
-      "required": true
-    },
-    "MASTER_PASSWORD": {
-      "description": "Password for the pair site dashboard (not needed if you only run the bot). Default: nikola-md-internal.",
-      "value": "nikola-md-internal",
-      "required": false
     }
   },
   "buildpacks": [
