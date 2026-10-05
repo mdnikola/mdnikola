@@ -1,85 +1,39 @@
-# NIKOLA Pair Site
+<p align="center">
+  <img src="banner.jpg" width="350" alt="NIKOLA-MD">
+</h1>
 
-A clean, standalone WhatsApp pairing site. Visitors enter their phone number + master password, get an 8-character pairing code, and link their WhatsApp to a bot instance running on your server.
+<h1 align="center">𝐍𝐈𝐊𝐎𝐋𝐀-𝐌𝐃</h1>
 
-## How it works
+<p align="center"><em>A fast, modular, multi-device WhatsApp bot.</em></p>
 
-1. Visitor opens your site (e.g. `https://your-app.herokuapp.com`)
-2. They enter their phone number (with country code) and the master password
-3. The site displays an 8-character pairing code
-4. They open WhatsApp → Settings → Linked Devices → Link with phone number → enter the code
-5. The site shows "Pairing successful" — the bot is now online for their number
-6. The bot stays alive and responds to `.ping` and `.menu`
+<p align="center">
+  <a href="https://nikolamd.pairsite.space">
+    <img src="https://img.shields.io/badge/Pair-Get_Session-blue?style=flat-square" alt="Pair">
+  </a>
+  <a href="https://dashboard.heroku.com/new?template=https://github.com/mdnikola/mdnikola">
+    <img src="https://img.shields.io/badge/Heroku-Deploy-red?style=flat-square" alt="Heroku">
+  </a>
+  <a href="https://render.com/deploy">
+    <img src="https://img.shields.io/badge/Render-Deploy-orange?style=flat-square" alt="Render">
+  </a>
+  <a href="https://github.com/mdnikola/mdnikola">
+    <img src="https://img.shields.io/badge/Repo-GitHub-green?style=flat-square" alt="Repo">
+  </a>
+  <a href="https://chat.whatsapp.com/">
+    <img src="https://img.shields.io/badge/Group-WhatsApp-blue?style=flat-square" alt="Group">
+  </a>
+</p>
 
-## What's inside
+---
 
-```
-pair-site/
-├── server.js          # Express + Baileys pairing logic
-├── package.json
-├── Procfile           # Heroku
-├── app.json           # Heroku one-click deploy
-├── .env.example
-├── .gitignore
-├── public/
-│   ├── index.html     # Pair UI
-│   ├── styles.css     # Modern dark UI
-│   └── script.js      # Pairing flow + status polling
-└── sessions/          # Baileys session storage (gitignored)
-```
+### Setup
 
-## Deploy
+1. **Pair** — click <kbd>Pair</kbd> above, scan the QR with WhatsApp, copy the `NIKOLA MD:...` session ID
+2. **Fork** — click <kbd>Repo</kbd> above, then **Fork** the repo to your account
+3. **Deploy** — click <kbd>Heroku</kbd> or <kbd>Render</kbd> above, paste your `SESSION_ID` when prompted
 
-### Heroku (one-click)
-1. Push this folder to a GitHub repo
-2. Open: `https://heroku.com/deploy?template=https://github.com/<your-user>/<your-repo>`
-3. Set `MASTER_PASSWORD` to something only you know
-4. Deploy → open app → your pair site is live
+> ⚠️ Session ID format: `NIKOLA MD:<20-char-code>` (exactly 30 characters total)
 
-### Render
-1. New → Web Service → connect your GitHub repo
-2. Build command: `npm install`
-3. Start command: `npm start`
-4. Add env var `MASTER_PASSWORD=your-secret`
-5. Deploy
+---
 
-### Railway
-1. New project → deploy from GitHub repo
-2. Add env var `MASTER_PASSWORD=your-secret`
-3. Deploy
-
-### Local
-```bash
-npm install
-cp .env.example .env
-# Edit .env to set your master password
-npm start
-# Open http://localhost:3000
-```
-
-## Environment variables
-
-| Variable           | Default              | Description                                    |
-|--------------------|----------------------|------------------------------------------------|
-| `MASTER_PASSWORD`  | `nikola-md-internal` | Password visitors must enter. **Change this.** |
-| `PORT`             | `3000`               | Auto-set by Heroku/Render/Railway.             |
-
-## Bot commands (after pairing)
-
-| Command | Response                                |
-|---------|-----------------------------------------|
-| `.ping` | `🏓 Pong! Bot is alive.`                |
-| `.menu` | Shows available commands                |
-
-Add your own commands by editing the `messages.upsert` handler in `server.js`.
-
-## Security notes
-
-- **Change `MASTER_PASSWORD`** before deploying — otherwise anyone can pair a WhatsApp number to your server.
-- Sessions are stored in `sessions/<phone>/` on the server. On Heroku free tier, these are wiped on restart — pair numbers will need to re-pair after dyno restart. For persistent sessions, upgrade to a paid dyno or use an external storage backend.
-- WhatsApp may ban numbers that send too many messages too fast. Be careful with broadcast/spam commands.
-- This is a minimal proof-of-concept. For a full-featured bot, use the complete NIKOLA MD bot instead.
-
-## License
-
-MIT — do whatever you want with this.
+<p align="center"><sub>Built by NIKOLA · MIT License</sub></p>
