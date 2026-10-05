@@ -102,6 +102,23 @@ async function fetchJson(url) {
     return res.json();
 }
 
+// ─── Bold Sans Unicode converter ────────────────────────────────────────
+// Converts regular text to 𝗯𝗼𝗹𝗱 𝘀𝗮𝗻𝘀 (Mathematical Sans-Serif Bold)
+const BOLD_SANS_MAP = (() => {
+    const map = {};
+    // A-Z → 𝗔-𝗭 (U+1D5D4 - U+1D5ED)
+    for (let i = 0; i < 26; i++) map[String.fromCharCode(65 + i)] = String.fromCodePoint(0x1D5D4 + i);
+    // a-z → 𝗮-𝘇 (U+1D5EE - U+1D607)
+    for (let i = 0; i < 26; i++) map[String.fromCharCode(97 + i)] = String.fromCodePoint(0x1D5EE + i);
+    // 0-9 → 𝟬-𝟵 (U+1D7EC - U+1D7F5)
+    for (let i = 0; i < 10; i++) map[String.fromCharCode(48 + i)] = String.fromCodePoint(0x1D7EC + i);
+    return map;
+})();
+
+function boldSans(text) {
+    return String(text).split('').map(c => BOLD_SANS_MAP[c] || c).join('');
+}
+
 // ─── Command definitions ───────────────────────────────────────────────
 // Each command: { name, desc, category, handler }
 
@@ -1094,26 +1111,59 @@ cmd('menu', 'Show this menu', 'Info', async (ctx) => {
     };
 
     const uptime = formatUptime(Date.now() - startTime);
-    let menu = `╭─「 ⚡ 𝐍𝐈𝐊𝐎𝐋𝐀-𝐌𝐃 ⚡ 」\n`;
-    menu += `│\n`;
-    menu += `├ 👑 Owner: ${settings.ownerName}\n`;
-    menu += `├ ⚙️ Prefix: ${settings.prefix}\n`;
-    menu += `├ 🌐 Mode: ${settings.mode}\n`;
-    menu += `├ ⏱️ Uptime: ${uptime}\n`;
-    menu += `├ 📦 Commands: ${commands.length}\n`;
-    menu += `│\n`;
+    const botName = boldSans('NIKOLA-MD');
+    const tagline = boldSans('Premium WhatsApp Bot');
+    const ownerLine = boldSans(settings.ownerName);
+    const prefixLine = boldSans(settings.prefix);
+    const modeLine = boldSans(settings.mode);
+    const uptimeLine = boldSans(uptime);
+    const cmdsLine = boldSans(String(commands.length));
 
-    for (const [cat, cmds] of Object.entries(categories)) {
+    // ─── Header (Neon Glass box) ───────────────────────────────────────
+    let menu = '';
+    menu += `  ╭──────────────────────────────────────╮\n`;
+    menu += `  │                                      │\n`;
+    menu += `  │     ✦ ⚡ ${botName} ⚡ ✦              │\n`;
+    menu += `  │     ──────────────────────           │\n`;
+    menu += `  │     ${tagline}           │\n`;
+    menu += `  │                                      │\n`;
+    menu += `  ╰──────────────────────────────────────╯\n`;
+    menu += `\n`;
+
+    // ─── Status block ──────────────────────────────────────────────────
+    menu += `   ▌ 👑 ${boldSans('Owner')}   │  ${ownerLine}\n`;
+    menu += `   ▌ ⚙️  ${boldSans('Prefix')}  │  ${prefixLine}\n`;
+    menu += `   ▌ 🌐 ${boldSans('Mode')}    │  ${modeLine}\n`;
+    menu += `   ▌ ⏱️  ${boldSans('Uptime')}  │  ${uptimeLine}\n`;
+    menu += `   ▌ 📦 ${boldSans('Cmds')}    │  ${cmdsLine}\n`;
+    menu += `\n`;
+
+    // ─── Separator ─────────────────────────────────────────────────────
+    menu += `  ─━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━─\n`;
+    menu += `\n`;
+
+    // ─── Category boxes ────────────────────────────────────────────────
+    const catEntries = Object.entries(categories);
+    for (let i = 0; i < catEntries.length; i++) {
+        const [cat, cmds] = catEntries[i];
         const emoji = emojiMap[cat] || '📌';
-        menu += `├─「 ${emoji} 𝐍𝐈𝐊𝐎𝐋𝐀-𝐌𝐃 」\n`;
-        menu += `│\n`;
+        const catName = boldSans(cat.toUpperCase());
+
+        menu += `  ╭─ ✦ ${emoji} ${catName} ──────────────────────────╮\n`;
         for (const c of cmds) {
-            menu += `│ ${settings.prefix}${c.name.padEnd(14)} ${c.desc}\n`;
+            const cmdName = boldSans(settings.prefix + c.name);
+            const desc = c.desc;
+            menu += `  │  ▸ ${cmdName.padEnd(16)} ${desc} │\n`;
         }
-        menu += `│\n`;
+        menu += `  ╰─────────────────────────────────────╯\n`;
+        if (i < catEntries.length - 1) menu += `\n`;
     }
-    menu += `╰─「 Built by NIKOLA · MIT License 」\n`;
-    menu += `\n> ⚡ NIKOLA MD`;
+
+    // ─── Footer ────────────────────────────────────────────────────────
+    menu += `\n`;
+    menu += `  ─━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━─\n`;
+    menu += `\n`;
+    menu += `        ✦ ${boldSans('NIKOLA-MD')} · ${boldSans('PREMIUM')} ✦\n`;
 
     await ctx.reply(menu);
 });
