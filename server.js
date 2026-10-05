@@ -44,6 +44,9 @@ const {
 } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 
+// Command handler
+const { handleMessage, handleWordleGuess, handleNumberGuess, handleTTT, handleHangman } = require('./commands');
+
 // ─── Config ────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 const MASTER_PASSWORD = process.env.MASTER_PASSWORD || 'nikola-md-internal';
@@ -335,18 +338,18 @@ async function startBot() {
     botSock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
         if (!m.message || m.key.fromMe) return;
-        const text =
-            m.message.conversation ||
-            m.message.extendedTextMessage?.text ||
-            '';
-        const cmd = text.trim().toLowerCase();
-        if (cmd === '.ping') {
-            await botSock.sendMessage(m.key.remoteJid, { text: '🏓 Pong! NIKOLA MD is alive.' });
-        } else if (cmd === '.menu') {
-            await botSock.sendMessage(m.key.remoteJid, {
-                text: '🤖 NIKOLA MD\n\nCommands:\n.ping — check if bot is alive\n.menu — show this menu\n\nAdd your own commands in server.js (messages.upsert handler).',
-            });
-        }
+
+        const text = m.message.conversation || m.message.extendedTextMessage?.text || '';
+        if (!text) return;
+
+        // Game guesses (no prefix needed) — each handler returns true if it handled the message
+        if (await handleWordleGuess(botSock, m)) return;
+        if (await handleNumberGuess(botSock, m)) return;
+        if (await handleTTT(botSock, m)) return;
+        if (await handleHangman(botSock, m)) return;
+
+        // Regular command handler
+        await handleMessage(botSock, m);
     });
 }
 
