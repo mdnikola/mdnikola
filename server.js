@@ -431,7 +431,12 @@ async function startBot() {
 
     botSock.ev.on('messages.upsert', async ({ messages }) => {
         const m = messages[0];
-        if (!m.message || m.key.fromMe) return;
+        if (!m.message) return;
+        // NOTE: Do NOT skip m.key.fromMe — when paired to user's own number,
+        // commands from their phone arrive as fromMe=true. The command handler
+        // only responds to messages starting with the prefix (.), and the bot's
+        // own responses don't start with the prefix, so there's no infinite loop.
+        // Game handlers separately check fromMe to avoid self-guessing.
 
         const text = m.message.conversation || m.message.extendedTextMessage?.text || '';
         if (!text) return;

@@ -1189,7 +1189,10 @@ cmd('help', 'Show help', 'Info', async (ctx) => {
 // ═══════════════════════════════════════════════════════════════════════
 
 async function handleMessage(sock, m) {
-    if (!m.message || m.key.fromMe) return;
+    if (!m.message) return;
+    // NOTE: Do NOT skip m.key.fromMe — when the bot is paired to the user's own
+    // number, commands sent from their phone arrive as fromMe=true. The bot's own
+    // responses don't start with the prefix, so there's no infinite loop.
     const text = m.message.conversation || m.message.extendedTextMessage?.text || '';
     if (!text) return;
     if (!text.startsWith(settings.prefix)) return;
@@ -1236,6 +1239,7 @@ async function handleMessage(sock, m) {
 
 // Wordle guess handler (no prefix, 5-letter words)
 async function handleWordleGuess(sock, m) {
+    if (m.key.fromMe) return false; // skip bot's own messages
     const chatId = m.key.remoteJid;
     const game = wordleGames.get(chatId);
     if (!game) return false;
@@ -1266,6 +1270,7 @@ async function handleWordleGuess(sock, m) {
 
 // Number guess handler (no prefix, numbers)
 async function handleNumberGuess(sock, m) {
+    if (m.key.fromMe) return false; // skip bot's own messages
     const chatId = m.key.remoteJid;
     const game = numberGuessGames.get(chatId);
     if (!game) return false;
@@ -1294,12 +1299,14 @@ async function handleNumberGuess(sock, m) {
 
 // Tic-tac-toe handler (no prefix, 1-9)
 async function handleTTT(sock, m) {
+    if (m.key.fromMe) return false; // skip bot's own messages
     const chatId = m.key.remoteJid;
     const game = tttGames.get(chatId);
     if (!game) return false;
     const text = (m.message.conversation || m.message.extendedTextMessage?.text || '').trim();
+    // Must be exactly a single digit 1-9 (not "1|2|3" etc.)
+    if (!/^[1-9]$/.test(text)) return false;
     const pos = parseInt(text, 10);
-    if (isNaN(pos) || pos < 1 || pos > 9) return false;
     if (game.board[pos - 1] === 'X' || game.board[pos - 1] === 'O') {
         await sock.sendMessage(chatId, { text: '❌ That spot is already taken.' });
         return true;
@@ -1336,6 +1343,7 @@ function checkTTTWinner(b) {
 
 // Hangman letter guess
 async function handleHangman(sock, m) {
+    if (m.key.fromMe) return false; // skip bot's own messages
     const chatId = m.key.remoteJid;
     const game = hangmanGames.get(chatId);
     if (!game) return false;
